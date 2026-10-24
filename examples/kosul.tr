@@ -1,0 +1,18 @@
+# Koşullar ve aritmetik
+a = 7
+b = 3
+toplam = a + b
+yazdır toplam
+
+eğer toplam > 10 ise
+    yazdır "büyük"
+değilse eğer toplam == 10 ise
+    yazdır "tam on"
+değilse
+    yazdır "küçük"
+bitir
+
+oran = a / 2
+yazdır oran
+çift_mi = a % 2 == 0
+yazdır çift_mi

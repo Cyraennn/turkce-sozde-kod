@@ -1,0 +1,13 @@
+# Basit örnek
+isim = "Dünya"
+yazdır "Merhaba " + isim
+
+x = 5
+y = 2.5
+sonuç = x * y
+yazdır sonuç
+
+aktif = doğru
+eğer aktif ve değil (x < 0) ise
+    yazdır "x pozitif"
+bitir

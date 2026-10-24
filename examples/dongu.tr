@@ -1,0 +1,25 @@
+# Sayaç ve koşul döngüleri
+toplam = 0
+döngü i = 1, 10 için
+    toplam = toplam + i
+bitir
+yazdır toplam
+
+sayı = 1
+döngü sayı < 100 için
+    sayı = sayı * 2
+bitir
+yazdır sayı
+
+# FizzBuzz
+döngü n = 1, 15 için
+    eğer n % 15 == 0 ise
+        yazdır "FizzBuzz"
+    değilse eğer n % 3 == 0 ise
+        yazdır "Fizz"
+    değilse eğer n % 5 == 0 ise
+        yazdır "Buzz"
+    değilse
+        yazdır n
+    bitir
+bitir
