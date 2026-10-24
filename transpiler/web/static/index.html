@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>trc — Sözde Kod Dönüştürücü</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23f5a524'/%3E%3Ctext x='16' y='21' font-family='monospace' font-weight='700' font-size='13' text-anchor='middle' fill='%231a1203'%3Etrc%3C/text%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #0e1014;
+  --panel: #15181e;
+  --panel-2: #1b1f27;
+  --line: #262b35;
+  --text: #e6e8ec;
+  --muted: #8a92a3;
+  --faint: #5a6170;
+  --accent: #f5a524;
+  --accent-ink: #1a1203;
+  --ok: #3ccf8e;
+  --err: #ff6b6b;
+  --err-bg: rgba(255, 107, 107, .12);
+  --kw: #f5a524;
+  --str: #9ad17a;
+  --num: #6cc3ff;
+  --com: #5f6878;
+  --type: #c792ea;
+  --fn: #7fd8d0;
+  --mono: "Cascadia Code", "JetBrains Mono", Consolas, "SF Mono", Menlo, monospace;
+  --sans: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #f4f2ee;
+  --panel: #ffffff;
+  --panel-2: #f8f7f4;
+  --line: #e2ded6;
+  --text: #1d1f24;
+  --muted: #646a76;
+  --faint: #a2a7b0;
+  --accent: #c76d00;
+  --accent-ink: #ffffff;
+  --ok: #1a9a62;
+  --err: #d33a3a;
+  --err-bg: rgba(211, 58, 58, .09);
+  --kw: #b65f00;
+  --str: #3f7f1c;
+  --num: #1f6fb2;
+  --com: #9aa0aa;
+  --type: #8a3fb8;
+  --fn: #127a72;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 var(--sans);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+button, select { font: inherit; color: inherit; }
+
+/* --- üst çubuk --- */
+header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.brand { display: flex; align-items: center; gap: 10px; margin-right: auto; }
+.logo {
+  font: 700 15px/1 var(--mono);
+  background: var(--accent);
+  color: var(--accent-ink);
+  padding: 6px 8px;
+  border-radius: 6px;
+  letter-spacing: -.5px;
+}
+.brand h1 { font-size: 15px; font-weight: 600; margin: 0; }
+.brand small { color: var(--muted); font-size: 12px; }
+.btn {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 6px 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.btn:hover { border-color: var(--faint); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn:disabled { opacity: .55; cursor: progress; }
+kbd {
+  font: 11px var(--mono);
+  opacity: .7;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 0 4px;
+}
+select.btn { padding-right: 8px; }
+
+/* --- yerleşim --- */
+main {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 12px 16px 16px;
+}
+.pane {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.pane-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 14px;
+  min-height: 42px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-2);
+}
+.pane-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.spacer { flex: 1; }
+
+/* --- editör --- */
+.editor {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  font: 14px/22px var(--mono);
+}
+.gutter {
+  flex: none;
+  padding: 12px 0;
+  min-width: 46px;
+  text-align: right;
+  color: var(--faint);
+  user-select: none;
+  overflow: hidden;
+  border-right: 1px solid var(--line);
+}
+.gutter div { padding: 0 10px 0 8px; height: 22px; }
+.gutter div.bad { color: var(--err); font-weight: 700; }
+.code-area { position: relative; flex: 1; min-width: 0; }
+.code-area pre, .code-area textarea {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 12px 14px;
+  font: inherit;
+  white-space: pre;
+  overflow: auto;
+  tab-size: 4;
+  border: 0;
+}
+.code-area pre { pointer-events: none; color: var(--text); }
+.code-area pre .ln { display: block; min-height: 22px; }
+.code-area pre .ln.bad { background: var(--err-bg); box-shadow: inset 2px 0 var(--err); margin: 0 -14px; padding: 0 14px; }
+.code-area textarea {
+  background: transparent;
+  color: transparent;
+  caret-color: var(--accent);
+  resize: none;
+  outline: none;
+}
+.code-area textarea::selection { background: rgba(245, 165, 36, .28); color: transparent; }
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  min-height: 38px;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
+.status.bad { color: var(--err); background: var(--err-bg); }
+.status.bad .dot { background: var(--err); }
+.status .hint { margin-left: auto; color: var(--faint); font-size: 12px; }
+
+/* --- çıktı sekmeleri --- */
+.tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; flex: 1; align-self: stretch; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 0 11px;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.tab:hover { color: var(--text); }
+.tab[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+.icon-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.icon-btn:hover { color: var(--text); border-color: var(--line); }
+
+.output { flex: 1; min-height: 0; overflow: auto; position: relative; }
+.output pre {
+  margin: 0;
+  padding: 12px 14px;
+  font: 14px/22px var(--mono);
+  white-space: pre;
+  tab-size: 4;
+}
+.output.stale pre { opacity: .45; }
+.output .meta {
+  position: sticky;
+  top: 0;
+  float: right;
+  margin: 8px 10px 0 0;
+  font: 11px var(--mono);
+  color: var(--faint);
+}
+
+/* "hepsi" ızgarası */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1px; background: var(--line); }
+.grid .cell { background: var(--panel); min-width: 0; }
+.grid .cell h3 {
+  margin: 0;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--panel-2);
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+}
+.grid .cell h3:hover { color: var(--accent); }
+.grid pre { font-size: 12.5px; line-height: 19px; overflow: auto; max-height: 360px; }
+
+/* --- konsol --- */
+.console { grid-column: 1 / -1; max-height: 24vh; }
+.console .pane-head { min-height: 38px; }
+.console pre {
+  margin: 0;
+  padding: 10px 14px;
+  font: 13px/20px var(--mono);
+  overflow: auto;
+  min-height: 60px;
+  max-height: calc(24vh - 40px);
+  white-space: pre-wrap;
+}
+.console .placeholder { color: var(--faint); }
+.console .stderr { color: var(--err); }
+.console .info { color: var(--muted); }
+.console.collapsed pre { display: none; }
+
+/* --- sözdizimi renkleri --- */
+.k { color: var(--kw); font-weight: 600; }
+.s { color: var(--str); }
+.n { color: var(--num); }
+.c { color: var(--com); font-style: italic; }
+.t { color: var(--type); }
+.f { color: var(--fn); }
+.o { color: var(--muted); }
+
+.toast {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--text);
+  color: var(--bg);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  opacity: 0;
+  transition: .2s;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%); }
+
+/* --- yardım --- */
+dialog {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0;
+  width: min(640px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+}
+dialog::backdrop { background: rgba(0, 0, 0, .5); }
+dialog .body { padding: 18px 22px; overflow: auto; }
+dialog h2 { margin: 0 0 4px; font-size: 17px; }
+dialog p { color: var(--muted); margin: 0 0 14px; }
+dialog table { width: 100%; border-collapse: collapse; font-size: 13px; }
+dialog td { padding: 7px 0; border-top: 1px solid var(--line); vertical-align: top; }
+dialog td:first-child { font-family: var(--mono); white-space: nowrap; padding-right: 18px; }
+dialog .foot { padding: 12px 22px; border-top: 1px solid var(--line); text-align: right; }
+
+/* "<=" ve "<<" gibi işleçler tek simgeye dönüşmesin. Yukarıdaki `font:` kısaltmaları
+   (ör. `.code-area pre`) bu ayarları sıfırladığı ve daha özgül olduğu için !important. */
+pre, textarea, kbd, .gutter {
+  font-variant-ligatures: none !important;
+  font-feature-settings: "liga" 0, "calt" 0 !important;
+}
+
+@media (max-width: 860px) {
+  body { overflow: auto; }
+  main { grid-template-columns: 1fr; grid-template-rows: 420px 420px auto; }
+  .brand small { display: none; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <span class="logo">trc</span>
+    <div>
+      <h1>Sözde Kod Dönüştürücü</h1>
+      <small>Türkçe sözde kod → 7 programlama dili · kural tabanlı, yapay zekasız</small>
+    </div>
+  </div>
+  <select id="examples" class="btn" aria-label="Örnek seç">
+    <option value="">Örnekler…</option>
+  </select>
+  <button id="helpBtn" class="btn" type="button">Söz dizimi</button>
+  <button id="themeBtn" class="btn" type="button" aria-label="Tema değiştir">◐</button>
+  <button id="runBtn" class="btn primary" type="button">▶ Çalıştır <kbd>Ctrl+Enter</kbd></button>
+</header>
+
+<main>
+  <section class="pane">
+    <div class="pane-head">
+      <span class="pane-title">Sözde kod</span>
+      <span class="spacer"></span>
+      <button class="icon-btn" id="clearBtn" type="button">Temizle</button>
+    </div>
+    <div class="editor">
+      <div class="gutter" id="gutter"></div>
+      <div class="code-area">
+        <pre id="hl" aria-hidden="true"></pre>
+        <textarea id="src" spellcheck="false" autocomplete="off" autocapitalize="off"
+                  aria-label="Sözde kod editörü"></textarea>
+      </div>
+    </div>
+    <div class="status" id="status"><span class="dot"></span><span id="statusText">Hazır</span>
+      <span class="hint">Tab = girinti</span></div>
+  </section>
+
+  <section class="pane">
+    <div class="pane-head">
+      <div class="tabs" id="tabs" role="tablist"></div>
+      <button class="icon-btn" id="copyBtn" type="button">Kopyala</button>
+      <button class="icon-btn" id="dlBtn" type="button">İndir</button>
+    </div>
+    <div class="output" id="output"></div>
+  </section>
+
+  <section class="pane console" id="console">
+    <div class="pane-head">
+      <span class="pane-title">Program çıktısı</span>
+      <span class="info" id="runMeta" style="font-size:12px;color:var(--faint)"></span>
+      <span class="spacer"></span>
+      <button class="icon-btn" id="toggleConsole" type="button">Gizle</button>
+    </div>
+    <pre id="consoleOut"><span class="placeholder">Programı çalıştırmak için ▶ Çalıştır'a basın. (Python çevirisi 5 sn sınırla çalıştırılır.)</span></pre>
+  </section>
+</main>
+
+<dialog id="help">
+  <div class="body">
+    <h2>Söz dizimi</h2>
+    <p>Bloklar <b>bitir</b> ile kapanır; girinti yalnızca okunabilirlik içindir.</p>
+    <table>
+      <tr><td>x = 5</td><td>Atama — tip kendiliğinden çıkarılır (tam sayı, ondalık, metin, mantıksal)</td></tr>
+      <tr><td>yazdır "Puan: " + x</td><td>Ekrana yaz. Metin + sayı otomatik birleşir</td></tr>
+      <tr><td>eğer x &gt; 3 ise … bitir</td><td>Koşul. Araya <b>değilse eğer … ise</b> ve <b>değilse</b> eklenebilir</td></tr>
+      <tr><td>döngü i = 1, 10 için … bitir</td><td>Sayaç döngüsü (1 ve 10 dahil)</td></tr>
+      <tr><td>döngü x &lt; 100 için … bitir</td><td>Koşul döngüsü (while)</td></tr>
+      <tr><td>ve · veya · değil</td><td>Mantıksal işleçler</td></tr>
+      <tr><td>doğru · yanlış</td><td>Mantıksal değerler</td></tr>
+      <tr><td>+ - * / %</td><td>Aritmetik. <b>/</b> her zaman ondalık verir (7 / 2 = 3.5)</td></tr>
+      <tr><td># yorum</td><td>Satır sonuna kadar yorum</td></tr>
+      <tr><td>Ctrl+Enter</td><td>Programı çalıştır</td></tr>
+      <tr><td>Alt+1 … Alt+8</td><td>Dil sekmeleri arasında geçiş</td></tr>
+    </table>
+  </div>
+  <div class="foot"><button class="btn primary" type="button" onclick="this.closest('dialog').close()">Tamam</button></div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+/* ---------- örnekler ---------- */
+const EXAMPLES = {
+  "Merhaba": `# Basit örnek
+isim = "Dünya"
+yazdır "Merhaba " + isim
+
+x = 5
+y = 2.5
+sonuç = x * y
+yazdır sonuç
+
+aktif = doğru
+eğer aktif ve değil (x < 0) ise
+    yazdır "x pozitif"
+bitir
+`,
+  "Koşullar": `# Koşullar ve aritmetik
+a = 7
+b = 3
+toplam = a + b
+yazdır toplam
+
+eğer toplam > 10 ise
+    yazdır "büyük"
+değilse eğer toplam == 10 ise
+    yazdır "tam on"
+değilse
+    yazdır "küçük"
+bitir
+
+oran = a / 2
+yazdır oran
+çift_mi = a % 2 == 0
+yazdır çift_mi
+`,
+  "Döngüler & FizzBuzz": `# Sayaç ve koşul döngüleri
+toplam = 0
+döngü i = 1, 10 için
+    toplam = toplam + i
+bitir
+yazdır toplam
+
+sayı = 1
+döngü sayı < 100 için
+    sayı = sayı * 2
+bitir
+yazdır sayı
+
+# FizzBuzz
+döngü n = 1, 15 için
+    eğer n % 15 == 0 ise
+        yazdır "FizzBuzz"
+    değilse eğer n % 3 == 0 ise
+        yazdır "Fizz"
+    değilse eğer n % 5 == 0 ise
+        yazdır "Buzz"
+    değilse
+        yazdır n
+    bitir
+bitir
+`,
+  "Not ortalaması": `# Not ortalaması ve harf notu
+vize = 60
+final = 85
+ortalama = vize * 0.4 + final * 0.6
+yazdır "Ortalama: " + ortalama
+
+eğer ortalama >= 85 ise
+    yazdır "Harf notu: AA"
+değilse eğer ortalama >= 70 ise
+    yazdır "Harf notu: BB"
+değilse eğer ortalama >= 50 ise
+    yazdır "Harf notu: CC"
+değilse
+    yazdır "Kaldı"
+bitir
+`,
+  "Asal sayılar": `# 2-30 arası asal sayılar
+döngü n = 2, 30 için
+    asal = doğru
+    bölen = 2
+    döngü bölen * bölen <= n ve asal için
+        eğer n % bölen == 0 ise
+            asal = yanlış
+        bitir
+        bölen = bölen + 1
+    bitir
+    eğer asal ise
+        yazdır n + " asaldır"
+    bitir
+bitir
+`,
+};
+
+/* ---------- sözdizimi renklendirme ---------- */
+const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const span = (cls, text) => `<span class="${cls}">${esc(text)}</span>`;
+
+const TR_KEYWORDS = new Set(["eğer", "ise", "değilse", "bitir", "yazdır", "döngü", "için", "ve", "veya", "değil"]);
+const TR_BOOLS = new Set(["doğru", "yanlış"]);
+
+function highlightTurkish(line) {
+  const re = /("(?:\\.|[^"\\])*"?)|(#.*)|(\d+(?:\.\d+)?)|([\p{L}_][\p{L}\p{N}_]*)|([^\s\p{L}\p{N}_"#]+)|(\s+)/gu;
+  let out = "", m;
+  while ((m = re.exec(line))) {
+    const [tok, str, com, num, word, op] = m;
+    if (str) out += span("s", tok);
+    else if (com) out += span("c", tok);
+    else if (num) out += span("n", tok);
+    else if (word) out += TR_KEYWORDS.has(word.normalize("NFC")) ? span("k", tok)
+                       : TR_BOOLS.has(word.normalize("NFC")) ? span("n", tok) : esc(tok);
+    else if (op) out += span("o", tok);
+    else out += esc(tok);
+  }
+  return out;
+}
+
+const LANG_SPEC = {
+  python:     { com: "#",  kw: "if elif else for in while range and or not print import def return True False None", types: "int float str bool" },
+  cpp:        { com: "//", kw: "if else for while return using namespace include auto const static_cast true false std", types: "int double bool string void char" },
+  java:       { com: "//", kw: "public class static void if else for while return new true false", types: "int double boolean String" },
+  javascript: { com: "//", kw: "let const function if else for while return true false", types: "Number String" },
+  dart:       { com: "//", kw: "void if else for while return true false var final", types: "int double bool String" },
+  go:         { com: "//", kw: "package import func var if else for return true false", types: "int float64 bool string" },
+  rust:       { com: "//", kw: "fn let mut if else while for loop as return true false", types: "i64 f64 bool String" },
+};
+
+function highlightCode(code, lang) {
+  const spec = LANG_SPEC[lang] || LANG_SPEC.python;
+  const kw = new Set(spec.kw.split(" ")), types = new Set(spec.types.split(" "));
+  const comment = spec.com === "#" ? "#.*" : "\\/\\/.*";
+  const re = new RegExp(
+    `("(?:\\\\.|[^"\\\\])*")|(${comment})|(#!?\\[.*\\]|#include.*)|(\\b\\d+(?:\\.\\d+)?\\b)|([A-Za-z_]\\w*)(\\s*[(!])?|([\\s\\S])`, "g");
+  let out = "", m;
+  while ((m = re.exec(code))) {
+    const [tok, str, com, directive, num, word, call, other] = m;
+    if (str) out += span("s", tok);
+    else if (com) out += span("c", tok);
+    else if (directive) out += span("t", tok);
+    else if (num) out += span("n", tok);
+    else if (word) {
+      const cls = kw.has(word) ? "k" : types.has(word) ? "t" : call ? "f" : null;
+      out += (cls ? span(cls, word) : esc(word)) + (call ? esc(call) : "");
+    } else out += esc(other);
+  }
+  return out;
+}
+
+/* ---------- durum ---------- */
+const $ = id => document.getElementById(id);
+const src = $("src"), hl = $("hl"), gutter = $("gutter");
+const store = {
+  get(k) { try { return localStorage.getItem("trc." + k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem("trc." + k, v); } catch {} },
+};
+
+let languages = [];          // [{ad, gorunen, uzanti}]
+let current = store.get("lang") || "python";
+let codes = {};              // dil → üretilen kod (son başarılı çeviri)
+let errorLine = null;
+let reqSeq = 0;
+
+/* ---------- editör ---------- */
+function renderEditor() {
+  const lines = src.value.split("\n");
+  hl.innerHTML = lines.map((l, i) =>
+    `<span class="ln${i + 1 === errorLine ? " bad" : ""}">${highlightTurkish(l) || " "}</span>`).join("");
+  gutter.innerHTML = lines.map((_, i) =>
+    `<div${i + 1 === errorLine ? ' class="bad"' : ""}>${i + 1}</div>`).join("");
+  syncScroll();
+}
+function syncScroll() {
+  hl.scrollTop = src.scrollTop;
+  hl.scrollLeft = src.scrollLeft;
+  gutter.scrollTop = src.scrollTop;
+}
+src.addEventListener("scroll", syncScroll);
+src.addEventListener("input", () => { renderEditor(); scheduleTranslate(); store.set("src", src.value); });
+
+const OPENERS = /(\bise|\biçin|^\s*değilse)\s*(#.*)?$/u;
+src.addEventListener("keydown", e => {
+  if (e.key === "Tab") {
+    e.preventDefault();
+    insert("    ");
+  } else if (e.key === "Enter" && !e.ctrlKey && !e.metaKey) {
+    // Girintiyi koru; blok açan satırdan sonra bir kademe içeri al.
+    e.preventDefault();
+    const before = src.value.slice(0, src.selectionStart);
+    const line = before.slice(before.lastIndexOf("\n") + 1);
+    let indent = line.match(/^\s*/)[0];
+    if (OPENERS.test(line)) indent += "    ";
+    insert("\n" + indent);
+  } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    run();
+  }
+});
+function insert(text) {
+  // execCommand geri al (Ctrl+Z) geçmişini korur.
+  if (!document.execCommand("insertText", false, text)) {
+    const s = src.selectionStart;
+    src.setRangeText(text, s, src.selectionEnd, "end");
+    src.dispatchEvent(new Event("input"));
+  }
+}
+
+/* ---------- çeviri ---------- */
+let timer;
+function scheduleTranslate() {
+  clearTimeout(timer);
+  $("output").classList.add("stale");
+  timer = setTimeout(translate, 220);
+}
+
+async function api(path, body) {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return res.json();
+}
+
+async function translate() {
+  const seq = ++reqSeq;
+  let data;
+  try {
+    data = await api("/api/cevir", { kaynak: src.value, dil: "hepsi" });
+  } catch {
+    if (seq === reqSeq) setStatus(false, "Sunucuya ulaşılamadı — terminalde `trc --arayuz` açık mı?");
+    return;
+  }
+  if (seq !== reqSeq) return;            // daha yeni bir istek yolda
+  if (data.hata) {
+    errorLine = data.hata.satir || null;
+    setStatus(false, data.hata.metin);
+  } else {
+    errorLine = null;
+    codes = data.kodlar;
+    const n = src.value.split("\n").filter(l => l.trim() && !l.trim().startsWith("#")).length;
+    setStatus(true, `Çevrildi · ${n} satır → ${languages.length} dil`);
+  }
+  renderEditor();
+  renderOutput();
+}
+
+function setStatus(ok, text) {
+  $("status").classList.toggle("bad", !ok);
+  $("statusText").textContent = text;
+}
+
+/* ---------- çıktı ---------- */
+function renderTabs() {
+  const all = [...languages.map(l => [l.ad, l.gorunen]), ["hepsi", "Hepsi"]];
+  $("tabs").innerHTML = all.map(([ad, ad2], i) =>
+    `<button class="tab" role="tab" data-lang="${ad}" title="Alt+${i + 1}"
+       aria-selected="${ad === current}">${ad2}</button>`).join("");
+}
+$("tabs").addEventListener("click", e => {
+  const t = e.target.closest(".tab");
+  if (t) selectLang(t.dataset.lang);
+});
+function selectLang(lang) {
+  current = lang;
+  store.set("lang", lang);
+  document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", t.dataset.lang === lang));
+  const single = lang !== "hepsi";
+  $("copyBtn").hidden = $("dlBtn").hidden = !single;
+  renderOutput();
+}
+
+function renderOutput() {
+  const out = $("output");
+  out.classList.toggle("stale", errorLine !== null);
+  if (!Object.keys(codes).length) { out.innerHTML = ""; return; }
+  if (current === "hepsi") {
+    out.innerHTML = `<div class="grid">${languages.map(l => `
+      <div class="cell"><h3 data-lang="${l.ad}"><span>${l.gorunen}</span><span>${l.uzanti} ↗</span></h3>
+      <pre>${highlightCode(codes[l.ad] || "", l.ad)}</pre></div>`).join("")}</div>`;
+  } else {
+    const code = codes[current] || "";
+    const lines = code.replace(/\n$/, "").split("\n").length;
+    out.innerHTML = `<span class="meta">${lines} satır</span><pre>${highlightCode(code, current)}</pre>`;
+  }
+}
+$("output").addEventListener("click", e => {
+  const h = e.target.closest("h3[data-lang]");
+  if (h) selectLang(h.dataset.lang);
+});
+
+$("copyBtn").onclick = async () => {
+  try { await navigator.clipboard.writeText(codes[current] || ""); toast("Kopyalandı"); }
+  catch { toast("Kopyalanamadı"); }
+};
+$("dlBtn").onclick = () => {
+  const info = languages.find(l => l.ad === current);
+  if (!info) return;
+  const name = current === "java" ? "Main.java" : "program" + info.uzanti;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([codes[current] || ""], { type: "text/plain" }));
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast(name + " indirildi");
+};
+
+/* ---------- çalıştır ---------- */
+async function run() {
+  const btn = $("runBtn"), out = $("consoleOut");
+  $("console").classList.remove("collapsed");
+  $("toggleConsole").textContent = "Gizle";
+  btn.disabled = true;
+  out.innerHTML = '<span class="info">Çalışıyor…</span>';
+  try {
+    const r = await api("/api/calistir", { kaynak: src.value });
+    if (r.hata) {
+      out.innerHTML = `<span class="stderr">${esc(r.hata.metin)}</span>`;
+      $("runMeta").textContent = "";
+    } else {
+      let html = esc(r.cikti);
+      if (r.hata_cikti) html += `<span class="stderr">${esc(r.hata_cikti)}</span>`;
+      if (r.zaman_asimi) html += `<span class="stderr">\n⏱ 5 saniye sınırı aşıldı — sonsuz döngü olabilir.</span>`;
+      out.innerHTML = html || '<span class="placeholder">(program bir şey yazdırmadı)</span>';
+      $("runMeta").textContent = `· Python ile çalıştırıldı · ${r.sure_ms} ms`;
+    }
+  } catch {
+    out.innerHTML = '<span class="stderr">Sunucuya ulaşılamadı.</span>';
+  } finally {
+    btn.disabled = false;
+  }
+}
+$("runBtn").onclick = run;
+$("toggleConsole").onclick = () => {
+  const c = $("console").classList.toggle("collapsed");
+  $("toggleConsole").textContent = c ? "Göster" : "Gizle";
+};
+
+/* ---------- diğer ---------- */
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => t.classList.remove("show"), 1600);
+}
+
+const sel = $("examples");
+sel.innerHTML += Object.keys(EXAMPLES).map(k => `<option>${k}</option>`).join("");
+sel.onchange = () => {
+  if (!sel.value) return;
+  src.value = EXAMPLES[sel.value];
+  sel.value = "";
+  src.dispatchEvent(new Event("input"));
+  src.focus();
+};
+$("clearBtn").onclick = () => { src.value = ""; src.dispatchEvent(new Event("input")); src.focus(); };
+$("helpBtn").onclick = () => $("help").showModal();
+
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  store.set("theme", t);
+}
+$("themeBtn").onclick = () => applyTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
+
+document.addEventListener("keydown", e => {
+  if (e.altKey && /^[1-8]$/.test(e.key)) {
+    const tabs = document.querySelectorAll(".tab");
+    const t = tabs[Number(e.key) - 1];
+    if (t) { e.preventDefault(); selectLang(t.dataset.lang); }
+  }
+});
+
+/* ---------- başlat ---------- */
+(async function init() {
+  applyTheme(store.get("theme") ||
+    (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"));
+  src.value = store.get("src") ?? EXAMPLES["Döngüler & FizzBuzz"];
+  renderEditor();
+  try {
+    languages = await (await fetch("/api/diller")).json();
+  } catch {
+    setStatus(false, "Sunucuya ulaşılamadı — terminalde `trc --arayuz` açık mı?");
+    return;
+  }
+  if (current !== "hepsi" && !languages.some(l => l.ad === current)) current = "python";
+  renderTabs();
+  selectLang(current);
+  translate();
+  src.focus();
+})();
+</script>
+</body>
+</html>

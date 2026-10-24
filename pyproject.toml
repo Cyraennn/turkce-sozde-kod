@@ -15,3 +15,6 @@ trc = "transpiler.cli.main:main"
 
 [tool.setuptools.packages.find]
 include = ["transpiler*"]
+
+[tool.setuptools.package-data]
+"transpiler.web" = ["static/*.html"]

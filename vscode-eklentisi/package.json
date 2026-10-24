@@ -1,0 +1,152 @@
+{
+  "name": "trc-sozde-kod",
+  "displayName": "trc — Türkçe Sözde Kod",
+  "description": "Türkçe sözde kodu (.tr) renklendirir, hataları anında gösterir; C++, Python, Dart, Java, Rust, Go ve JavaScript'e canlı çevirir ve çalıştırır.",
+  "version": "0.1.0",
+  "publisher": "cyraennn",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Linters"
+  ],
+  "keywords": ["türkçe", "sözde kod", "pseudocode", "transpiler", "eğitim"],
+  "main": "./src/extension.js",
+  "activationEvents": [
+    "onLanguage:turkce-sozde-kod"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "turkce-sozde-kod",
+        "aliases": ["Türkçe Sözde Kod", "trc"],
+        "extensions": [".tr", ".trc"],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/tr.svg",
+          "dark": "./icons/tr.svg"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "turkce-sozde-kod",
+        "scopeName": "source.turkce-sozde-kod",
+        "path": "./syntaxes/turkce-sozde-kod.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "turkce-sozde-kod",
+        "path": "./snippets/turkce-sozde-kod.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "trc.onizle",
+        "title": "Çeviriyi yanda göster",
+        "category": "trc",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "trc.calistir",
+        "title": "Çalıştır",
+        "category": "trc",
+        "icon": "$(play)"
+      },
+      {
+        "command": "trc.dilSec",
+        "title": "Hedef dili seç",
+        "category": "trc"
+      },
+      {
+        "command": "trc.hepsiniKaydet",
+        "title": "7 dile çevirip dosyalara kaydet",
+        "category": "trc"
+      },
+      {
+        "command": "trc.arayuz",
+        "title": "Tarayıcı arayüzünü aç",
+        "category": "trc"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "trc.onizle",
+          "when": "resourceLangId == turkce-sozde-kod",
+          "group": "navigation@1"
+        },
+        {
+          "command": "trc.calistir",
+          "when": "resourceLangId == turkce-sozde-kod",
+          "group": "navigation@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "trc.onizle",
+          "when": "editorLangId == turkce-sozde-kod"
+        },
+        {
+          "command": "trc.calistir",
+          "when": "editorLangId == turkce-sozde-kod"
+        },
+        {
+          "command": "trc.hepsiniKaydet",
+          "when": "editorLangId == turkce-sozde-kod"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "trc.calistir",
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "when": "editorTextFocus && editorLangId == turkce-sozde-kod"
+      },
+      {
+        "command": "trc.onizle",
+        "key": "ctrl+k v",
+        "mac": "cmd+k v",
+        "when": "editorTextFocus && editorLangId == turkce-sozde-kod"
+      }
+    ],
+    "configuration": {
+      "title": "trc — Türkçe Sözde Kod",
+      "properties": {
+        "trc.hedefDil": {
+          "type": "string",
+          "default": "python",
+          "enum": ["cpp", "python", "dart", "java", "rust", "go", "javascript"],
+          "enumItemLabels": ["C++", "Python", "Dart", "Java", "Rust", "Go", "JavaScript"],
+          "description": "Yan panelde gösterilecek hedef dil."
+        },
+        "trc.python": {
+          "type": "string",
+          "default": "python",
+          "description": "trc'yi çalıştıracak Python yorumlayıcısı (ör. python, py ya da tam yol)."
+        },
+        "trc.transpilerYolu": {
+          "type": "string",
+          "default": "",
+          "description": "'transpiler' paketi kurulu değilse, paketi içeren proje klasörünün yolu (PYTHONPATH'e eklenir)."
+        },
+        "trc.canliKontrol": {
+          "type": "boolean",
+          "default": true,
+          "description": "Yazarken hataları kırmızı dalgalı çizgiyle göster."
+        },
+        "trc.gecikme": {
+          "type": "number",
+          "default": 300,
+          "minimum": 50,
+          "description": "Yazmayı bıraktıktan kaç milisaniye sonra yeniden çevrileceği."
+        }
+      }
+    }
+  }
+}

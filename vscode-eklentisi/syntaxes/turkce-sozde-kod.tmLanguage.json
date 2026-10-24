@@ -1,0 +1,73 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Türkçe Sözde Kod",
+  "scopeName": "source.turkce-sozde-kod",
+  "patterns": [
+    { "include": "#yorum" },
+    { "include": "#metin" },
+    { "include": "#anahtar" },
+    { "include": "#sayi" },
+    { "include": "#atama" },
+    { "include": "#islec" }
+  ],
+  "repository": {
+    "yorum": {
+      "name": "comment.line.number-sign.turkce-sozde-kod",
+      "match": "#.*$"
+    },
+    "metin": {
+      "name": "string.quoted.double.turkce-sozde-kod",
+      "begin": "\"",
+      "end": "\"|$",
+      "patterns": [
+        { "name": "constant.character.escape.turkce-sozde-kod", "match": "\\\\[nt\"\\\\]" },
+        { "name": "invalid.illegal.escape.turkce-sozde-kod", "match": "\\\\." }
+      ]
+    },
+    "anahtar": {
+      "patterns": [
+        {
+          "name": "keyword.control.conditional.turkce-sozde-kod",
+          "match": "(?<![\\p{L}\\p{N}_])(?:eğer|ise|değilse)(?![\\p{L}\\p{N}_])"
+        },
+        {
+          "name": "keyword.control.loop.turkce-sozde-kod",
+          "match": "(?<![\\p{L}\\p{N}_])(?:döngü|için)(?![\\p{L}\\p{N}_])"
+        },
+        {
+          "name": "keyword.control.end.turkce-sozde-kod",
+          "match": "(?<![\\p{L}\\p{N}_])bitir(?![\\p{L}\\p{N}_])"
+        },
+        {
+          "name": "support.function.builtin.turkce-sozde-kod",
+          "match": "(?<![\\p{L}\\p{N}_])yazdır(?![\\p{L}\\p{N}_])"
+        },
+        {
+          "name": "keyword.operator.logical.turkce-sozde-kod",
+          "match": "(?<![\\p{L}\\p{N}_])(?:ve|veya|değil)(?![\\p{L}\\p{N}_])"
+        },
+        {
+          "name": "constant.language.boolean.turkce-sozde-kod",
+          "match": "(?<![\\p{L}\\p{N}_])(?:doğru|yanlış)(?![\\p{L}\\p{N}_])"
+        }
+      ]
+    },
+    "sayi": {
+      "name": "constant.numeric.turkce-sozde-kod",
+      "match": "(?<![\\p{L}\\p{N}_])\\d+(?:\\.\\d+)?(?![\\p{L}\\p{N}_])"
+    },
+    "atama": {
+      "match": "^\\s*([\\p{L}_][\\p{L}\\p{N}_]*)\\s*(?==(?!=))",
+      "captures": {
+        "1": { "name": "variable.other.assignment.turkce-sozde-kod" }
+      }
+    },
+    "islec": {
+      "patterns": [
+        { "name": "keyword.operator.comparison.turkce-sozde-kod", "match": "==|!=|<=|>=|<|>" },
+        { "name": "keyword.operator.assignment.turkce-sozde-kod", "match": "=" },
+        { "name": "keyword.operator.arithmetic.turkce-sozde-kod", "match": "[+\\-*/%]" }
+      ]
+    }
+  }
+}

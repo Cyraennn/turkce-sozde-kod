@@ -43,6 +43,26 @@ bitir
 | Karşılaştırma | `== != < > <= >=` |
 | Mantık | `ve`, `veya`, `değil` |
 
+## Tarayıcı arayüzü
+```bash
+trc --arayuz            # http://127.0.0.1:8765/ açılır (dolu ise boş bir port seçilir)
+trc --arayuz --port 9000
+```
+Solda renklendirilmiş editör, sağda 7 dil sekmesi ve "Hepsi" görünümü bulunur. Yazdıkça
+çeviri güncellenir, hatalı satır kırmızıyla işaretlenir. **▶ Çalıştır** (Ctrl+Enter) kodun
+Python çevirisini 5 saniye sınırla çalıştırıp çıktısını gösterir. Örnekler, kopyala/indir,
+açık/koyu tema ve Alt+1…8 sekme kısayolları vardır. Sunucu yalnızca `127.0.0.1`'i dinler;
+dış bağımlılık ve internet gerekmez.
+
+## VS Code eklentisi
+```bash
+python vscode-eklentisi/paketle.py --kur
+```
+`.tr` dosyaları renklendirilir ve hatalar yazarken kırmızı çizgiyle gösterilir. **Ctrl+K V**
+canlı çeviriyi yan panelde açar; dil, sağ alttaki *trc → …* yazısından değiştirilir.
+**Ctrl+Enter** programı çalıştırır. Ayrıntılar: [vscode-eklentisi/README.md](vscode-eklentisi/README.md).
+Eklenti çeviriyi kendisi yapmaz; `trc - --json` ile bu paketi çağırır.
+
 ## Etkileşimli kabuk
 Satırları yazın, **boş satıra Enter** basınca seçili dile çevrilir.
 
@@ -92,6 +112,7 @@ transpiler/
   semantic.py               # tip çıkarımı
   generators/               # base.py + dil başına bir dosya + registry.py
   cli/                      # main.py (argparse), repl.py (ReplSession)
-tests/                      # lexer, parser, semantic, repl, generators/*, entegrasyon
+  web/                      # server.py (yerel HTTP API) + static/index.html (arayüz)
+tests/                      # lexer, parser, semantic, repl, web, generators/*, entegrasyon
 examples/                   # örnek .tr dosyaları
 ```

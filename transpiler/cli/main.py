@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
-from .. import __version__, compile_source
+from .. import __version__, compile_source, service
 from ..errors import TranspileError
 from ..generators import available_languages, resolve
 from .repl import run_repl
@@ -24,12 +25,20 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("-a", "--all", "--hepsi", action="store_true", help="tüm dillere çevir")
     p.add_argument("-o", "--output", help="çıktı dosyası (--all ile: klasör)")
     p.add_argument("--diller", action="store_true", help="desteklenen dilleri listele")
+    p.add_argument("--arayuz", "--arayüz", "--gui", action="store_true",
+                   help="tarayıcı arayüzünü aç")
+    p.add_argument("--port", type=int, default=8765, help="arayüz portu (varsayılan 8765)")
+    p.add_argument("--calistir", "--çalıştır", action="store_true",
+                   help="programı Python çevirisiyle çalıştır ve çıktısını yaz")
+    p.add_argument("--json", action="store_true",
+                   help="sonucu JSON olarak yaz (editör eklentileri için; hatalar da JSON'dur)")
     p.add_argument("--version", action="version", version=f"trc {__version__}")
     return p
 
 
 def main(argv: list[str] | None = None) -> int:
-    for stream in (sys.stdout, sys.stderr):
+    # Windows'ta varsayılan kod sayfası (cp1254) Türkçe harfleri bozar; her akış UTF-8.
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(encoding="utf-8")
 
@@ -38,6 +47,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.diller:
         for info in available_languages():
             print(f"{info.name:<11} {info.display:<11} {info.ext}")
+        return 0
+
+    if args.arayuz:
+        from ..web import serve
+        serve(args.port)
         return 0
 
     try:
@@ -55,6 +69,26 @@ def main(argv: list[str] | None = None) -> int:
     except OSError as exc:
         print(f"Dosya okunamadı: {exc}", file=sys.stderr)
         return 2
+
+    if args.json:
+        if args.calistir:
+            result = service.run_python(source)
+        else:
+            result = service.translate(source, "hepsi" if args.all else lang)
+        print(json.dumps(result, ensure_ascii=False))
+        return 0
+
+    if args.calistir:
+        result = service.run_python(source)
+        if "hata" in result:
+            print(result["hata"]["metin"], file=sys.stderr)
+            return 1
+        print(result["cikti"], end="")
+        print(result["hata_cikti"], end="", file=sys.stderr)
+        if result["zaman_asimi"]:
+            print(f"\nZaman aşımı: program {service.RUN_TIMEOUT:g} saniyede bitmedi.", file=sys.stderr)
+            return 1
+        return 0
 
     try:
         compiled = compile_source(source)
